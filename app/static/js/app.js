@@ -39,6 +39,8 @@ function initEventListeners() {
         loadAvailableAssets();
       } else if (tabBtn.dataset.tab === "assetsTab") {
         loadAssets();
+      } else if (tabBtn.dataset.tab === "usersTab") {
+        loadUsers();
       }
     });
   });
@@ -65,6 +67,15 @@ function initEventListeners() {
     }
     openModal("newAssetModal");
   });
+  document.getElementById("openCreateUserModalBtn")?.addEventListener("click", () => {
+    if (currentUser?.role !== "ADMIN") {
+      alert("Access denied: Only Admins can create users.");
+      return;
+    }
+    document.getElementById("createUserForm")?.reset();
+    document.getElementById("createUserError")?.classList.add("hidden");
+    openModal("createUserModal");
+  });
 
   // Forms Submit
   document.getElementById("createTicketForm")?.addEventListener("submit", handleCreateTicket);
@@ -72,6 +83,7 @@ function initEventListeners() {
   document.getElementById("assignTicketForm")?.addEventListener("submit", handleAssignTicket);
   document.getElementById("resolveTicketForm")?.addEventListener("submit", handleResolveTicket);
   document.getElementById("assignAssetForm")?.addEventListener("submit", handleAssignAsset);
+  document.getElementById("createUserForm")?.addEventListener("submit", handleCreateUser);
 
   // Filters & Refresh
   document.getElementById("ticketStatusFilter")?.addEventListener("change", loadTickets);
@@ -319,6 +331,24 @@ function updateUserProfileUI(user) {
     }
   }
 
+  // 2b. Available Assets Tab: Employees cannot see/request available assets
+  const availableAssetsTabBtn = document.getElementById("tabAvailableAssetsBtn");
+  if (availableAssetsTabBtn) {
+    availableAssetsTabBtn.style.display = isEmp ? "none" : "";
+    if (isEmp && availableAssetsTabBtn.classList.contains("active")) {
+      availableAssetsTabBtn.classList.remove("active");
+      document.getElementById("availableAssetsTab")?.classList.remove("active");
+      document.querySelector('[data-tab="ticketsTab"]')?.classList.add("active");
+      document.getElementById("ticketsTab")?.classList.add("active");
+    }
+  }
+
+  // 2c. Users Tab (Admin/Support only)
+  const usersTabBtn = document.getElementById("tabUsersBtn");
+  if (usersTabBtn) {
+    usersTabBtn.style.display = isEmp ? "none" : "";
+  }
+
   // 3. Asset & Ticket control buttons
   const registerAssetBtn = document.getElementById("openNewAssetModalBtn");
   if (registerAssetBtn) {
@@ -406,7 +436,10 @@ async function apiRequest(endpoint, method = "GET", body = null) {
 function bootstrapPortalData() {
   loadTickets();
   loadAssets();
-  loadAvailableAssets();
+  if (currentUser?.role !== "EMPLOYEE") {
+    loadAvailableAssets();
+    loadUsers();
+  }
   loadAnalytics();
 }
 
