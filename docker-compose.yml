@@ -1,0 +1,59 @@
+services:
+  # Relational Database: PostgreSQL 15 Container
+  db:
+    image: postgres:15-alpine
+    container_name: it_asset_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: it_asset_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_secure_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d it_asset_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  # Web Application Backend: FastAPI Container
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: it_asset_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: prod
+      APP_NAME: "Smart IT Asset & Support Ticket Management System"
+      DB_TYPE: postgresql
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres_secure_password@db:5432/it_asset_db
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: it_asset_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres_secure_password
+      SECRET_KEY: production_secure_jwt_signing_key_at_least_32_bytes_long!
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - app-network
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

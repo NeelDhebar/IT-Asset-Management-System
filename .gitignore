@@ -1,0 +1,45 @@
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+*.secret
+
+# Python Virtual Environments & caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing & Coverage
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+
+# IDE & Editor folders
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Frontend & Build Artifacts
+node_modules/
+dist/
+build/
+*.egg-info/
+
+# Logs & Database files
+*.log
+logs/
+*.sqlite3
+*.db
+
+# OS specific
+.DS_Store
+Thumbs.db

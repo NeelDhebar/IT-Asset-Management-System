@@ -1,0 +1,8 @@
+# Ticket Records (Format: ticket_id|title|category|priority|created_by)
+INC-1001|My laptop is not starting|Hardware|HIGH|EMP-101
+INC-1002|Cannot connect to office Wi-Fi in meeting room B|Network|MEDIUM|EMP-102
+INC-1003|Need license activation for Microsoft Excel|Software|LOW|EMP-103
+INC-1004|VPN gateway timeout when accessing production cluster|Network|CRITICAL|EMP-101
+INC-1005|Spilled water on mechanical keyboard|Hardware|MEDIUM|EMP-104
+INC-1001|My laptop is not starting|Hardware|HIGH|EMP-101
+INC-1006|Forgotten password for Active Directory account|Access|HIGH|EMP-102

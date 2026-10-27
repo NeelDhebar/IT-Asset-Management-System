@@ -1,0 +1,36 @@
+# VCS
+.git/
+.github/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Tests & Coverage
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Secrets & Local env files
+.env
+.env.*.local
+*.secret
+
+# Frontend & Dependencies
+node_modules/
+dist/
+build/
+
+# Logs & temp DBs
+*.log
+logs/
+*.sqlite3
+*.db

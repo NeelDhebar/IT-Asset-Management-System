@@ -1,0 +1,31 @@
+[MAIN]
+analyse-fallback-blocks=no
+fail-under=8.0
+ignore=.venv,venv,.git,__pycache__,tests,data,logs
+jobs=0
+py-version=3.14
+
+[MESSAGES CONTROL]
+disable=
+    raw-checker-failed,
+    bad-inline-option,
+    locally-disabled,
+    file-ignored,
+    suppressed-message,
+    useless-suppression,
+    deprecated-pragma,
+    use-symbolic-message-instead,
+    too-few-public-methods,
+    broad-exception-caught
+
+[REPORTS]
+output-format=text
+reports=no
+score=yes
+
+[FORMAT]
+max-line-length=120
+
+[DESIGN]
+max-args=8
+max-attributes=12

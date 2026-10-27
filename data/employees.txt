@@ -1,0 +1,9 @@
+# Employee Records (Format: user_id|email|full_name|role|department)
+EMP-101|john.doe@company.com|John Doe|EMPLOYEE|Engineering
+EMP-102|jane.smith@company.com|Jane Smith|EMPLOYEE|Marketing
+EMP-103|robert.brown@company.com|Robert Brown|EMPLOYEE|Finance
+SUP-201|sarah.connor@company.com|Sarah Connor|SUPPORT|IT Helpdesk
+SUP-202|alex.murphy@company.com|Alex Murphy|SUPPORT|IT Helpdesk
+ADM-001|admin.boss@company.com|Admin Boss|ADMIN|IT Infrastructure
+EMP-102|jane.smith@company.com|Jane Smith|EMPLOYEE|Marketing
+EMP-104|lisa.simpson@company.com|Lisa Simpson|EMPLOYEE|Research

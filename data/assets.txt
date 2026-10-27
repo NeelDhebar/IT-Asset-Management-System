@@ -1,0 +1,9 @@
+# Asset Records (Format: asset_id|asset_type|brand|model|serial_number|purchase_date|purchase_cost)
+LAP-1023|Laptop|Dell|Latitude 5440|ABC12345|2025-04-12|1250.00
+LAP-1024|Laptop|Lenovo|ThinkPad T14|DEF67890|2024-11-20|1300.00
+MON-2001|Monitor|Dell|UltraSharp U2723QE|MON99112|2024-08-15|450.00
+KEY-3001|Keyboard|Logitech|MX Keys Advanced|KEY44556|2025-01-10|110.00
+MOU-4001|Mouse|Logitech|MX Master 3S|MOU77889|2025-01-10|99.00
+PRN-5001|Printer|HP|LaserJet Pro M404dn|PRN33221|2023-05-19|380.00
+LAP-1023|Laptop|Dell|Latitude 5440|ABC12345|2025-04-12|1250.00
+LAP-1025|Laptop|Apple|MacBook Pro 16|APL55443|2025-02-01|2400.00
