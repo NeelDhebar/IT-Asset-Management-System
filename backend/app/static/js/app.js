@@ -11,10 +11,12 @@ let socket = null;
 let currentRole = "ADMIN";
 
 // Determine API Base Prefix and host dynamically
+// In production (Vercel), point to the Render backend.
+// In local development, use localhost:8000.
+const isLocalhost = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
 const isDirectFile = window.location.protocol === "file:";
-const isCustomOrigin = window.location.port && window.location.port !== "8000";
-// Always use absolute URL to avoid issues with localhost IPv6 resolution
-const BACKEND_ORIGIN = `http://127.0.0.1:8000`;
+const RENDER_BACKEND_URL = "https://it-asset-management-system.onrender.com";
+const BACKEND_ORIGIN = (isLocalhost || isDirectFile) ? "http://127.0.0.1:8000" : RENDER_BACKEND_URL;
 const API_BASE = `${BACKEND_ORIGIN}/api/v1`;
 let wsReconnectTimer = null;
 

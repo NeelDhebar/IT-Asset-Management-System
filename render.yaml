@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: it-asset-management-system
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: APP_ENV
+        value: prod
+      - key: DB_TYPE
+        value: postgresql
+      - key: DATABASE_URL
+        sync: false        # Set this manually in Render dashboard (Neon connection string)
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "480"
+      - key: LOG_LEVEL
+        value: WARNING
+      - key: CORS_ORIGINS
+        value: "https://it-asset-management-system-brown.vercel.app,https://portal.company.com"
+      - key: EXTERNAL_API_URL
+        value: "https://worldtimeapi.org/api/timezone/Etc/UTC"
