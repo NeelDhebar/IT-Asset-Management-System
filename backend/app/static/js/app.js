@@ -169,27 +169,15 @@ async function checkServerHealth() {
 }
 
 async function hashPasswordForTransmission(plainPassword) {
-  try {
-    if (window.crypto && window.crypto.subtle) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(plainPassword);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-    }
-  } catch (e) {
-    console.warn("Client pre-hashing failed, falling back to raw transmission:", e);
-  }
   return plainPassword;
 }
 
 async function autoDemoLogin(email, password) {
   try {
-    const securePassword = await hashPasswordForTransmission(password);
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: securePassword }),
+      body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
       showLoginModal();
@@ -226,16 +214,15 @@ async function handleLoginSubmit(e) {
     // Pre-flight health check to give a clear connectivity error
     const healthRes = await fetch(`${BACKEND_ORIGIN}/health`, { cache: "no-store" }).catch(() => null);
     if (!healthRes || !healthRes.ok) {
-      errorBox.textContent = `Cannot reach server at ${BACKEND_ORIGIN}. Make sure python app/main.py is running.`;
+      errorBox.textContent = `Cannot reach server at ${BACKEND_ORIGIN}. Make sure the backend is running.`;
       errorBox.classList.remove("hidden");
       return;
     }
 
-    const securePassword = await hashPasswordForTransmission(password);
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: securePassword }),
+      body: JSON.stringify({ email, password }),
     });
 
     if (!res.ok) {
