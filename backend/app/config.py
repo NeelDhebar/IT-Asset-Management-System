@@ -57,20 +57,41 @@ class Settings(BaseSettings):
         """Normalize DATABASE_URL for SQLAlchemy and handle unresolved template variables."""
         url = (self.DATABASE_URL or "").strip()
 
+        # Determine preferred PostgreSQL driver
+        driver = "postgresql+psycopg"
+        try:
+            import psycopg  # noqa: F401
+            driver = "postgresql+psycopg"
+        except ImportError:
+            try:
+                import psycopg2  # noqa: F401
+                driver = "postgresql+psycopg2"
+            except ImportError:
+                driver = "postgresql+psycopg"
+
         # Handle unexpanded template variables or blank placeholders
         if "${" in url or url in ("", "postgresql+psycopg2://:@:/", "postgresql://:@:/", "postgres://:@:/"):
             if self.DB_TYPE == "postgresql" and self.DB_HOST and not self.DB_HOST.startswith("${") and self.DB_HOST != "localhost":
                 self.DATABASE_URL = (
-                    f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}"
+                    f"{driver}://{self.DB_USER}:{self.DB_PASSWORD}"
                     f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
                 )
             else:
                 self.DB_TYPE = "sqlite"
                 self.DATABASE_URL = f"sqlite:///./it_assets_{self.APP_ENV}.db"
         elif url.startswith("postgres://"):
-            self.DATABASE_URL = url.replace("postgres://", "postgresql+psycopg2://", 1)
+            self.DATABASE_URL = url.replace("postgres://", f"{driver}://", 1)
         elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
-            self.DATABASE_URL = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            self.DATABASE_URL = url.replace("postgresql://", f"{driver}://", 1)
+        elif url.startswith("postgresql+psycopg2://"):
+            try:
+                import psycopg2  # noqa: F401
+            except ImportError:
+                # Fall back to psycopg3 if psycopg2 is missing
+                self.DATABASE_URL = url.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
+
+        if "postgresql" in self.DATABASE_URL:
+            self.DB_TYPE = "postgresql"
 
         return self
 
@@ -103,13 +124,22 @@ class ConfigurationManager:
     def _initialize(self) -> None:
         """Determines active profile and loads configuration."""
         env_profile = os.getenv("APP_ENV", "dev").lower()
-        env_file = f".env.{env_profile}"
+        env_files = []
 
-        if not os.path.exists(env_file):
-            env_file = ".env" if os.path.exists(".env") else ".env.dev"
+        base_file = f".env.{env_profile}"
+        if not os.path.exists(base_file):
+            base_file = ".env" if os.path.exists(".env") else ".env.dev"
+        if os.path.exists(base_file):
+            env_files.append(base_file)
 
-        if os.path.exists(env_file):
-            self._settings = Settings(_env_file=env_file)
+        # Also load Neon environment variables from .env.local if present
+        for loc in [".env.local", "../.env.local"]:
+            if os.path.exists(loc) and loc not in env_files:
+                env_files.append(loc)
+                break
+
+        if env_files:
+            self._settings = Settings(_env_file=env_files)
         else:
             self._settings = Settings()
 

@@ -12,7 +12,7 @@ services:
       - key: DB_TYPE
         value: postgresql
       - key: DATABASE_URL
-        sync: false        # Set this manually in Render dashboard (Neon connection string)
+        sync: false        # Paste the Neon DATABASE_URL from .env.local into Render environment tab
       - key: SECRET_KEY
         generateValue: true
       - key: ALGORITHM
