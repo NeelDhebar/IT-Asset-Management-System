@@ -1163,7 +1163,94 @@ async function loadAnalytics() {
 }
 
 // =====================================================================
+// User Management (Admin & Support)
+// =====================================================================
 
+async function loadUsers() {
+  const tbody = document.getElementById("usersTableBody");
+  if (!tbody) return;
+
+  try {
+    const res = await apiRequest("/users");
+    const users = (res && res.data) ? res.data : [];
+
+    if (!users.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center">No users found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = users.map(user => {
+      const roleBadge = user.role === "ADMIN" 
+        ? "badge-critical" 
+        : user.role === "SUPPORT" ? "badge-medium" : "badge-low";
+      const statusBadge = user.is_active 
+        ? `<span class="badge badge-success">Active</span>` 
+        : `<span class="badge badge-retired">Inactive</span>`;
+      const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : "—";
+
+      return `
+        <tr>
+          <td><span class="font-mono text-primary">${escapeHtml(user.user_id)}</span></td>
+          <td><strong>${escapeHtml(user.full_name)}</strong></td>
+          <td>${escapeHtml(user.email)}</td>
+          <td><span class="badge ${roleBadge}">${escapeHtml(user.role)}</span></td>
+          <td>${escapeHtml(user.department || "—")}</td>
+          <td>${statusBadge}</td>
+          <td>${createdDate}</td>
+        </tr>
+      `;
+    }).join("");
+  } catch (err) {
+    console.error("Failed to load users:", err);
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Failed to load users. ${escapeHtml(err.message || "")}</td></tr>`;
+  }
+}
+
+async function handleCreateUser(e) {
+  e.preventDefault();
+  const errorBox = document.getElementById("createUserError");
+  const submitBtn = document.getElementById("createUserSubmitBtn");
+  if (errorBox) errorBox.classList.add("hidden");
+
+  const user_id = document.getElementById("newUserId")?.value.trim();
+  const role = document.getElementById("newUserRole")?.value;
+  const full_name = document.getElementById("newUserFullName")?.value.trim();
+  const email = document.getElementById("newUserEmail")?.value.trim();
+  const department = document.getElementById("newUserDepartment")?.value.trim();
+  const password = document.getElementById("newUserPassword")?.value;
+
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Creating..."; }
+
+  try {
+    const res = await apiRequest("/users", "POST", {
+      user_id,
+      role,
+      full_name,
+      email,
+      department,
+      password
+    });
+
+    if (res && res.data) {
+      closeModal("createUserModal");
+      document.getElementById("createUserForm")?.reset();
+      loadUsers();
+    } else {
+      if (errorBox) {
+        errorBox.textContent = res.message || "Failed to create user.";
+        errorBox.classList.remove("hidden");
+      }
+    }
+  } catch (err) {
+    console.error("Create user failed:", err);
+    if (errorBox) {
+      errorBox.textContent = err.message || "Error creating user.";
+      errorBox.classList.remove("hidden");
+    }
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Create User"; }
+  }
+}
 
 // =====================================================================
 // UI Modal Helpers
