@@ -4,7 +4,10 @@ FROM python:3.12-slim AS base
 # Prevent Python from writing .pyc files and enable unbuffered logging
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DEBIAN_FRONTEND=noninteractive
+    DEBIAN_FRONTEND=noninteractive \
+    APP_ENV=prod \
+    DB_TYPE=postgresql \
+    DATABASE_URL="postgresql://neondb_owner:npg_GxM03pioWcOq@ep-young-bonus-aznnu60t-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
 
 WORKDIR /app
 
