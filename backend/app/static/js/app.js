@@ -575,8 +575,27 @@ async function handleCreateTicket(e) {
   }
 }
 
-window.openAssignTicketModal = function(ticketId) {
+window.openAssignTicketModal = async function(ticketId) {
   document.getElementById("assignTargetTicketId").value = ticketId;
+  const supportSelect = document.getElementById("assignSupportUserId");
+  if (supportSelect) {
+    supportSelect.innerHTML = `<option value="">Loading engineers...</option>`;
+    try {
+      const res = await apiRequest("/users");
+      const users = (res && res.data) ? res.data : [];
+      const engineers = users.filter(u => u.is_active && (u.role === "SUPPORT" || u.role === "ADMIN"));
+      if (!engineers.length) {
+        supportSelect.innerHTML = `<option value="">No support engineers available</option>`;
+      } else {
+        supportSelect.innerHTML = engineers.map(u => 
+          `<option value="${escapeHtml(u.user_id)}">${escapeHtml(u.full_name)} (${escapeHtml(u.user_id)})</option>`
+        ).join("");
+      }
+    } catch (err) {
+      console.error("Failed to load support engineers:", err);
+      supportSelect.innerHTML = `<option value="">Failed to load engineers</option>`;
+    }
+  }
   openModal("assignTicketModal");
 };
 
@@ -744,8 +763,27 @@ async function handleCreateAsset(e) {
   }
 }
 
-window.openAssignAssetModal = function(assetId) {
+window.openAssignAssetModal = async function(assetId) {
   document.getElementById("assignTargetAssetId").value = assetId;
+  const empSelect = document.getElementById("assignEmployeeId");
+  if (empSelect) {
+    empSelect.innerHTML = `<option value="">Loading users...</option>`;
+    try {
+      const res = await apiRequest("/users");
+      const users = (res && res.data) ? res.data : [];
+      const activeUsers = users.filter(u => u.is_active);
+      if (!activeUsers.length) {
+        empSelect.innerHTML = `<option value="">No active users available</option>`;
+      } else {
+        empSelect.innerHTML = activeUsers.map(u => 
+          `<option value="${escapeHtml(u.user_id)}">${escapeHtml(u.full_name)} (${escapeHtml(u.user_id)}) - ${escapeHtml(u.role)}</option>`
+        ).join("");
+      }
+    } catch (err) {
+      console.error("Failed to load users for assignment:", err);
+      empSelect.innerHTML = `<option value="">Failed to load users</option>`;
+    }
+  }
   openModal("assignAssetModal");
 };
 
