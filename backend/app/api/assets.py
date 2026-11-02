@@ -55,9 +55,10 @@ def get_asset(
     service = AssetService(db)
     asset_data = service.get_asset(asset_id)
 
-    # If employee, ensure they are assigned this asset
-    if current_user.role == UserRole.EMPLOYEE.value and asset_data.get("assigned_to") != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to unassigned asset.")
+    # If employee, ensure they are assigned this asset or it is available inventory
+    if current_user.role == UserRole.EMPLOYEE.value:
+        if asset_data.get("assigned_to") != current_user.user_id and asset_data.get("status") != "AVAILABLE":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Cannot view assets assigned to other employees.")
 
     return APIResponse(data=asset_data)
 

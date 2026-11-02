@@ -68,7 +68,7 @@ function initEventListeners() {
 
 
   // Modals Openers
-  document.getElementById("openNewTicketModalBtn")?.addEventListener("click", () => openModal("newTicketModal"));
+  document.getElementById("openNewTicketModalBtn")?.addEventListener("click", () => openNewTicketModal());
   document.getElementById("openNewAssetModalBtn")?.addEventListener("click", () => {
     if (currentUser?.role === "EMPLOYEE") {
       alert("Access denied: Employees cannot register assets.");
@@ -88,6 +88,7 @@ function initEventListeners() {
 
   // Forms Submit
   document.getElementById("createTicketForm")?.addEventListener("submit", handleCreateTicket);
+  document.getElementById("requestAssetForm")?.addEventListener("submit", handleRequestAsset);
   document.getElementById("createAssetForm")?.addEventListener("submit", handleCreateAsset);
   document.getElementById("assignTicketForm")?.addEventListener("submit", handleAssignTicket);
   document.getElementById("resolveTicketForm")?.addEventListener("submit", handleResolveTicket);
@@ -106,15 +107,23 @@ function initEventListeners() {
   document.getElementById("availableAssetTypeFilter")?.addEventListener("change", loadAvailableAssets);
   document.getElementById("refreshAvailableAssetsBtn")?.addEventListener("click", loadAvailableAssets);
 
-
-
   // Live Auto-Classifier Preview in Raise Ticket Modal
   const titleInput = document.getElementById("ticketTitle");
   const descInput = document.getElementById("ticketDescription");
+  const assetSelect = document.getElementById("ticketRelatedAsset");
   if (titleInput && descInput) {
     const previewHandler = () => updateClassificationPreview(titleInput.value, descInput.value);
     titleInput.addEventListener("input", previewHandler);
     descInput.addEventListener("input", previewHandler);
+    if (assetSelect) {
+      assetSelect.addEventListener("change", () => {
+        const opt = assetSelect.options[assetSelect.selectedIndex];
+        if (assetSelect.value && !titleInput.value) {
+          titleInput.value = `Issue with ${opt.dataset.brand || ''} ${opt.dataset.model || ''} (${assetSelect.value})`.trim();
+        }
+        previewHandler();
+      });
+    }
   }
 }
 
@@ -327,28 +336,34 @@ function updateUserProfileUI(user) {
     }
   }
 
-  // 2b. Available Assets Tab: Employees cannot see/request available assets
+  // 2b. Available Assets Tab: Employees can browse available hardware to request equipment
   const availableAssetsTabBtn = document.getElementById("tabAvailableAssetsBtn");
   if (availableAssetsTabBtn) {
-    availableAssetsTabBtn.style.display = isEmp ? "none" : "";
-    if (isEmp && availableAssetsTabBtn.classList.contains("active")) {
-      availableAssetsTabBtn.classList.remove("active");
-      document.getElementById("availableAssetsTab")?.classList.remove("active");
-      document.querySelector('[data-tab="ticketsTab"]')?.classList.add("active");
-      document.getElementById("ticketsTab")?.classList.add("active");
-    }
+    availableAssetsTabBtn.style.display = "";
   }
 
-  // 2c. Users Tab (Admin/Support only)
+  // 2c. Users Tab (Admin/Support only - Employees cannot see users)
   const usersTabBtn = document.getElementById("tabUsersBtn");
   if (usersTabBtn) {
     usersTabBtn.style.display = isEmp ? "none" : "";
   }
 
   // 3. Asset & Ticket control buttons
+  const lookupEmployeeBtn = document.getElementById("lookupEmployeeBtn");
+  if (lookupEmployeeBtn) {
+    lookupEmployeeBtn.style.display = isEmp ? "none" : "";
+  }
+  const openRequestAssetModalBtn = document.getElementById("openRequestAssetModalBtn");
+  if (openRequestAssetModalBtn) {
+    openRequestAssetModalBtn.style.display = isEmp ? "" : "none";
+  }
   const registerAssetBtn = document.getElementById("openNewAssetModalBtn");
   if (registerAssetBtn) {
     registerAssetBtn.style.display = isEmp ? "none" : "";
+  }
+  const registerAssetBtn2 = document.getElementById("openNewAssetModalBtn2");
+  if (registerAssetBtn2) {
+    registerAssetBtn2.style.display = isEmp ? "none" : "";
   }
   const exportAssetsCsvBtn = document.getElementById("exportAssetsCsvBtn");
   if (exportAssetsCsvBtn) {
@@ -370,7 +385,7 @@ function updateUserProfileUI(user) {
   if (tabAssetsLabel) tabAssetsLabel.textContent = isEmp ? "My Assets" : "Assets";
 
   const tabAvailableAssetsLabel = document.getElementById("tabAvailableAssetsLabel");
-  if (tabAvailableAssetsLabel) tabAvailableAssetsLabel.textContent = "Available Assets";
+  if (tabAvailableAssetsLabel) tabAvailableAssetsLabel.textContent = isEmp ? "Available Hardware" : "Available Assets";
 
   const ticketsPanelTitle = document.getElementById("ticketsPanelTitle");
   if (ticketsPanelTitle) {
@@ -390,7 +405,7 @@ function updateUserProfileUI(user) {
   }
 
   const assetsPanelTitle = document.getElementById("assetsPanelTitle");
-  if (assetsPanelTitle) assetsPanelTitle.textContent = isEmp ? "My Assets" : "Assets";
+  if (assetsPanelTitle) assetsPanelTitle.textContent = isEmp ? "My Assigned Assets" : "Assets";
   const assetsPanelSub = document.getElementById("assetsPanelSub");
   if (assetsPanelSub) {
     assetsPanelSub.textContent = isEmp
@@ -432,8 +447,8 @@ async function apiRequest(endpoint, method = "GET", body = null) {
 function bootstrapPortalData() {
   loadTickets();
   loadAssets();
+  loadAvailableAssets();
   if (currentUser?.role !== "EMPLOYEE") {
-    loadAvailableAssets();
     loadUsers();
   }
   loadAnalytics();
@@ -555,13 +570,69 @@ function updateClassificationPreview(title, desc) {
   document.getElementById("autoSlaPreview").textContent = `${slaHours} Hours SLA Window`;
 }
 
+window.openNewTicketModal = async function(prefill = {}) {
+  const form = document.getElementById("createTicketForm");
+  if (form) form.reset();
+
+  const titleInput = document.getElementById("ticketTitle");
+  const descInput = document.getElementById("ticketDescription");
+  const assetSelect = document.getElementById("ticketRelatedAsset");
+
+  if (titleInput && prefill.title) titleInput.value = prefill.title;
+  if (descInput && prefill.description) descInput.value = prefill.description;
+
+  if (assetSelect) {
+    assetSelect.innerHTML = `<option value="">-- No specific asset / General IT issue --</option>`;
+    try {
+      const res = await apiRequest("/assets");
+      const assets = res.data || [];
+      // If employee, only list assets assigned to them
+      const filtered = (currentUser?.role === "EMPLOYEE")
+        ? assets.filter(a => a.assigned_to === currentUser.user_id)
+        : assets;
+
+      filtered.forEach(a => {
+        const opt = document.createElement("option");
+        opt.value = a.asset_id;
+        opt.dataset.brand = a.brand || "";
+        opt.dataset.model = a.model || "";
+        opt.dataset.type = a.type || a.asset_type || "";
+        opt.dataset.serial = a.serial_number || "";
+        const label = `${a.asset_id} - ${a.brand} ${a.model} (${a.type || "Hardware"})${a.serial_number ? " [S/N: " + a.serial_number + "]" : ""}`;
+        opt.textContent = label;
+        if (prefill.asset_id && prefill.asset_id === a.asset_id) {
+          opt.selected = true;
+        }
+        assetSelect.appendChild(opt);
+      });
+    } catch (err) {
+      console.warn("Could not load assets for ticket dropdown:", err);
+    }
+  }
+
+  updateClassificationPreview(titleInput?.value || "", descInput?.value || "");
+  openModal("newTicketModal");
+};
+
 async function handleCreateTicket(e) {
   e.preventDefault();
   const title = document.getElementById("ticketTitle").value.trim();
-  const description = document.getElementById("ticketDescription").value.trim();
+  let description = document.getElementById("ticketDescription").value.trim();
+  const assetSelect = document.getElementById("ticketRelatedAsset");
+  const selectedAssetId = assetSelect?.value;
+
+  let category = null;
+  if (selectedAssetId) {
+    const opt = assetSelect.options[assetSelect.selectedIndex];
+    const assetDetails = opt ? opt.textContent : selectedAssetId;
+    description += `\n\n[Related Asset: ${assetDetails}]`;
+    category = "Hardware";
+  }
 
   try {
-    const res = await apiRequest("/tickets", "POST", { title, description });
+    const payload = { title, description };
+    if (category) payload.category = category;
+    const res = await apiRequest("/tickets", "POST", payload);
     if (res.success) {
       closeModal("newTicketModal");
       document.getElementById("createTicketForm").reset();
@@ -572,6 +643,71 @@ async function handleCreateTicket(e) {
     }
   } catch (err) {
     alert("Error creating ticket: " + err.message);
+  }
+}
+
+// =====================================================================
+// Employee Asset Requisition
+// =====================================================================
+
+window.openRequestAssetModal = function(prefill = {}) {
+  const form = document.getElementById("requestAssetForm");
+  if (form) form.reset();
+
+  if (prefill.type) {
+    const typeSelect = document.getElementById("reqAssetType");
+    if (typeSelect) typeSelect.value = prefill.type;
+  }
+  if (prefill.spec) {
+    const specInput = document.getElementById("reqSpecification");
+    if (specInput) specInput.value = prefill.spec;
+  }
+
+  openModal("requestAssetModal");
+};
+
+window.requestSpecificAsset = function(assetId, model, type) {
+  openRequestAssetModal({
+    type: type || "Laptop",
+    spec: `Available Asset: ${assetId} - ${model}`,
+  });
+};
+
+async function handleRequestAsset(e) {
+  e.preventDefault();
+  const assetType = document.getElementById("reqAssetType").value;
+  const priority = document.getElementById("reqPriority").value;
+  const specification = document.getElementById("reqSpecification").value.trim();
+  const justification = document.getElementById("reqJustification").value.trim();
+
+  const title = `Asset Requisition: ${assetType}`;
+  const descParts = [
+    `Equipment Requisition for: ${assetType}`,
+    specification ? `Preferred Model / Specifications: ${specification}` : null,
+    `Business Justification & Location:\n${justification}`,
+  ].filter(Boolean).join("\n\n");
+
+  try {
+    const res = await apiRequest("/tickets", "POST", {
+      title,
+      description: descParts,
+      category: "Hardware",
+      priority: priority,
+    });
+
+    if (res.success) {
+      closeModal("requestAssetModal");
+      document.getElementById("requestAssetForm").reset();
+      alert(`Equipment requisition submitted successfully! Ticket ${res.data?.ticket_id || ""} has been logged with IT Support.`);
+      const ticketsTabBtn = document.querySelector('[data-tab="ticketsTab"]');
+      if (ticketsTabBtn) ticketsTabBtn.click();
+      loadTickets();
+      loadAnalytics();
+    } else {
+      alert(res.message || "Failed to submit asset request.");
+    }
+  } catch (err) {
+    alert("Requisition submission error: " + err.message);
   }
 }
 
@@ -908,7 +1044,7 @@ window.loadAvailableAssets = async function() {
 function renderAvailableAssetActionButtons(a) {
   const role = currentUser?.role || "EMPLOYEE";
   if (role !== "ADMIN" && role !== "SUPPORT") {
-    return `<span class="badge badge-available">Ready to Request</span>`;
+    return `<button type="button" class="btn btn-xs btn-primary" onclick="requestSpecificAsset('${escapeHtml(a.asset_id)}', '${escapeHtml(a.brand || '')} ${escapeHtml(a.model || '')}', '${escapeHtml(a.type || a.asset_type || 'Hardware')}')">Request</button>`;
   }
 
   let btns = `<button class="btn btn-xs btn-primary" onclick="openAssignAssetModal('${a.asset_id}')">Assign</button>`;
@@ -935,6 +1071,25 @@ let currentViewingEmpId = "";
 window.renderEmployeeLink = function(empId) {
   if (!empId) return `<span class="text-muted">Unassigned</span>`;
   const isMe = currentUser && empId === currentUser.user_id;
+  const isEmp = currentUser?.role === "EMPLOYEE";
+
+  // Strict privacy scoping: Employees cannot inspect other users' assigned equipment
+  if (isEmp) {
+    if (isMe) {
+      return `
+        <button type="button" class="emp-id-btn" onclick="openEmployeeAssetsModal('${escapeHtml(empId)}')" title="Click to view your assigned assets">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span>${escapeHtml(empId)} (You)</span>
+        </button>
+      `;
+    }
+    // Non-clickable badge for other employees or support agents
+    return `<span class="badge badge-subtle" style="font-weight: 500;">${escapeHtml(empId)}</span>`;
+  }
+
   const label = isMe ? `${empId} (You)` : empId;
   return `
     <button type="button" class="emp-id-btn" onclick="openEmployeeAssetsModal('${escapeHtml(empId)}')" title="Click to view assigned assets for ${escapeHtml(empId)}">
@@ -948,6 +1103,10 @@ window.renderEmployeeLink = function(empId) {
 };
 
 window.promptEmployeeLookup = function() {
+  if (currentUser?.role === "EMPLOYEE") {
+    alert("Access denied: Employee directory lookup is restricted to IT Support and Administrators.");
+    return;
+  }
   const empId = prompt("Enter Employee ID to view assigned assets (e.g. EMP-101):", "EMP-101");
   if (empId && empId.trim()) {
     openEmployeeAssetsModal(empId.trim());
@@ -956,6 +1115,10 @@ window.promptEmployeeLookup = function() {
 
 window.openEmployeeAssetsModal = async function(employeeId) {
   if (!employeeId) return;
+  if (currentUser?.role === "EMPLOYEE" && employeeId !== currentUser.user_id) {
+    alert("Access denied: You can only view your own assigned hardware assets.");
+    return;
+  }
   currentViewingEmpId = employeeId;
 
   const empIdSpan = document.getElementById("empAssetsModalEmpId");
@@ -1192,6 +1355,7 @@ async function loadAnalytics() {
 // =====================================================================
 
 async function loadUsers() {
+  if (currentUser?.role === "EMPLOYEE") return;
   const tbody = document.getElementById("usersTableBody");
   if (!tbody) return;
 

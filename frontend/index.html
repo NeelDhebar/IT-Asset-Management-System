@@ -295,12 +295,19 @@
           <p class="panel-sub" id="assetsPanelSub">Complete enterprise hardware inventory across all lifecycle states</p>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button type="button" class="btn btn-subtle" onclick="promptEmployeeLookup()">
+          <button type="button" id="lookupEmployeeBtn" class="btn btn-subtle" onclick="promptEmployeeLookup()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
             <span>Lookup Employee</span>
+          </button>
+          <button id="openRequestAssetModalBtn" class="btn btn-primary" onclick="openRequestAssetModal()" style="display: none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Request Equipment</span>
           </button>
           <button id="openNewAssetModalBtn" class="btn btn-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -553,6 +560,14 @@
         <div class="form-group">
           <label for="ticketTitle">Issue Summary / Title *</label>
           <input type="text" id="ticketTitle" class="form-input" required placeholder="e.g., My laptop is not starting">
+        </div>
+
+        <div class="form-group">
+          <label for="ticketRelatedAsset">Related Asset (Optional)</label>
+          <select id="ticketRelatedAsset" class="form-select">
+            <option value="">-- No specific asset / General IT issue --</option>
+          </select>
+          <small class="form-hint" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px; display: block;">Select which assigned hardware asset this issue relates to</small>
         </div>
 
         <div class="form-group">
@@ -838,7 +853,74 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=6.4"></script>
+  <!-- MODAL: Request IT Asset (For Employees) -->
+  <div id="requestAssetModal" class="modal-overlay hidden">
+    <div class="modal-content glass-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="brand-icon" style="width: 32px; height: 32px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <div>
+            <h3>Request IT Hardware Asset</h3>
+            <span class="panel-sub" style="font-size: 0.82rem;">Submit an official equipment requisition to IT Support</span>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal('requestAssetModal')">&times;</button>
+      </div>
+
+      <form id="requestAssetForm" class="form-grid">
+        <div class="form-group">
+          <label for="reqAssetType">Asset Type Needed *</label>
+          <select id="reqAssetType" class="form-select" required>
+            <option value="">-- Select Required Equipment --</option>
+            <option value="Laptop">Laptop (Developer / Business)</option>
+            <option value="Monitor">External Monitor / Display</option>
+            <option value="Desktop">Desktop Workstation</option>
+            <option value="Keyboard">Ergonomic Keyboard</option>
+            <option value="Mouse">Wireless / Precision Mouse</option>
+            <option value="Headset">Noise-Cancelling Headset</option>
+            <option value="Mobile">Mobile Testing Device / Tablet</option>
+            <option value="Other">Other Hardware Peripheral</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="reqPriority">Urgency / Priority *</label>
+          <select id="reqPriority" class="form-select" required>
+            <option value="LOW">Low - Routine requisition (Within standard SLA)</option>
+            <option value="MEDIUM" selected>Medium - Normal onboarding or project requirement</option>
+            <option value="HIGH">High - Urgent replacement for damaged / malfunctioning equipment</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="reqSpecification">Required Specifications / Preferred Model (Optional)</label>
+          <input type="text" id="reqSpecification" class="form-input"
+            placeholder="e.g., 32GB RAM, 15-inch display, USB-C, or specific asset ID">
+        </div>
+
+        <div class="form-group">
+          <label for="reqJustification">Business Justification & Delivery Location *</label>
+          <textarea id="reqJustification" class="form-textarea" rows="3" required
+            placeholder="Explain why this equipment is needed for your role, project, and where to deliver it (e.g. Desk 4B or Remote)..."></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('requestAssetModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submitAssetRequestBtn">
+            <span>Submit Asset Requisition</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js?v=7.0"></script>
 </body>
 
 </html>
