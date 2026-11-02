@@ -9,6 +9,7 @@ Demonstrates:
 import os
 from threading import Lock
 from typing import List, Optional
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -50,6 +51,28 @@ class Settings(BaseSettings):
 
     # External API
     EXTERNAL_API_URL: str = "https://worldtimeapi.org/api/timezone/Etc/UTC"
+
+    @model_validator(mode="after")
+    def validate_database_url(self) -> "Settings":
+        """Normalize DATABASE_URL for SQLAlchemy and handle unresolved template variables."""
+        url = (self.DATABASE_URL or "").strip()
+
+        # Handle unexpanded template variables or blank placeholders
+        if "${" in url or url in ("", "postgresql+psycopg2://:@:/", "postgresql://:@:/", "postgres://:@:/"):
+            if self.DB_TYPE == "postgresql" and self.DB_HOST and not self.DB_HOST.startswith("${") and self.DB_HOST != "localhost":
+                self.DATABASE_URL = (
+                    f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}"
+                    f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+                )
+            else:
+                self.DB_TYPE = "sqlite"
+                self.DATABASE_URL = f"sqlite:///./it_assets_{self.APP_ENV}.db"
+        elif url.startswith("postgres://"):
+            self.DATABASE_URL = url.replace("postgres://", "postgresql+psycopg2://", 1)
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
+            self.DATABASE_URL = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+        return self
 
     @property
     def cors_origins_list(self) -> List[str]:

@@ -54,14 +54,22 @@ class DatabaseConnectionManager:
                 cursor.execute("PRAGMA foreign_keys=ON")
                 cursor.close()
         else:
-            # PostgreSQL configuration with connection pooling
-            self._engine = create_engine(
-                db_url,
-                pool_pre_ping=True,
-                pool_size=10,
-                max_overflow=20,
-                echo=settings.DEBUG,
-            )
+            # PostgreSQL configuration with connection pooling and resilient SQLite fallback
+            try:
+                self._engine = create_engine(
+                    db_url,
+                    pool_pre_ping=True,
+                    pool_size=10,
+                    max_overflow=20,
+                    echo=settings.DEBUG,
+                )
+            except Exception as exc:
+                logger.error("Failed to initialize PostgreSQL engine with URL %s: %s. Using SQLite fallback.", db_url, exc)
+                self._engine = create_engine(
+                    f"sqlite:///./it_assets_{settings.APP_ENV}.db",
+                    connect_args={"check_same_thread": False},
+                    echo=settings.DEBUG,
+                )
 
         self._session_factory = sessionmaker(
             autocommit=False,
@@ -82,9 +90,25 @@ class DatabaseConnectionManager:
         return self._session_factory()
 
     def create_tables(self) -> None:
-        """Creates all registered ORM tables."""
-        Base.metadata.create_all(bind=self._engine)
-        logger.info("Database schemas and tables verified/created successfully.")
+        """Creates all registered ORM tables with fallback protection."""
+        try:
+            Base.metadata.create_all(bind=self._engine)
+            logger.info("Database schemas and tables verified/created successfully.")
+        except Exception as exc:
+            logger.error("Failed to create tables on primary database: %s", exc)
+            if "sqlite" not in str(self._engine.url).lower():
+                logger.warning("Attempting SQLite fallback initialization...")
+                try:
+                    fallback_url = f"sqlite:///./it_assets_{get_settings().APP_ENV}_fallback.db"
+                    self._engine = create_engine(
+                        fallback_url,
+                        connect_args={"check_same_thread": False},
+                    )
+                    self._session_factory.configure(bind=self._engine)
+                    Base.metadata.create_all(bind=self._engine)
+                    logger.info("Fallback SQLite database initialized successfully at %s.", fallback_url)
+                except Exception as fb_exc:
+                    logger.critical("SQLite fallback initialization also failed: %s", fb_exc)
 
 
 def get_db() -> Generator[Session, None, None]:
