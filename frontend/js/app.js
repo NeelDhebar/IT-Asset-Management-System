@@ -337,9 +337,16 @@ function updateUserProfileUI(user) {
   }
 
   // 2b. Available Assets Tab: Employees can browse available hardware to request equipment
+  // 2b. Available Assets Tab: Employees cannot see available hardware
   const availableAssetsTabBtn = document.getElementById("tabAvailableAssetsBtn");
   if (availableAssetsTabBtn) {
-    availableAssetsTabBtn.style.display = "";
+    availableAssetsTabBtn.style.display = isEmp ? "none" : "";
+    if (isEmp && availableAssetsTabBtn.classList.contains("active")) {
+      availableAssetsTabBtn.classList.remove("active");
+      document.getElementById("availableAssetsTab")?.classList.remove("active");
+      document.querySelector('[data-tab="ticketsTab"]')?.classList.add("active");
+      document.getElementById("ticketsTab")?.classList.add("active");
+    }
   }
 
   // 2c. Users Tab (Admin/Support only - Employees cannot see users)
@@ -441,14 +448,24 @@ async function apiRequest(endpoint, method = "GET", body = null) {
     handleLogout();
     throw new Error("Unauthorized");
   }
-  return await res.json();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    let msg = data.detail || data.message || `Request failed with status ${res.status}`;
+    if (Array.isArray(msg)) {
+      msg = msg.map(m => (m && m.msg) ? m.msg : JSON.stringify(m)).join(", ");
+    } else if (typeof msg === "object") {
+      msg = JSON.stringify(msg);
+    }
+    throw new Error(msg);
+  }
+  return data;
 }
 
 function bootstrapPortalData() {
   loadTickets();
   loadAssets();
-  loadAvailableAssets();
   if (currentUser?.role !== "EMPLOYEE") {
+    loadAvailableAssets();
     loadUsers();
   }
   loadAnalytics();
@@ -767,12 +784,18 @@ window.openResolveTicketModal = function(ticketId) {
 async function handleResolveTicket(e) {
   e.preventDefault();
   const ticketId = document.getElementById("resolveTargetTicketId").value;
-  const resolution = document.getElementById("resolveExplanation").value;
+  const resolution = document.getElementById("resolveExplanation").value.trim();
+
+  if (!resolution || resolution.length < 5) {
+    alert("Please provide a descriptive resolution explanation (at least 5 characters).");
+    return;
+  }
 
   try {
-    await apiRequest(`/tickets/${ticketId}/resolve`, "POST", { resolution });
+    const res = await apiRequest(`/tickets/${ticketId}/resolve`, "POST", { resolution });
     closeModal("resolveTicketModal");
     document.getElementById("resolveTicketForm").reset();
+    alert(res.message || "Ticket resolved successfully!");
     loadTickets();
     loadAnalytics();
   } catch (err) {
@@ -963,6 +986,7 @@ window.retireAsset = async function(assetId) {
 // =====================================================================
 
 window.loadAvailableAssets = async function() {
+  if (currentUser?.role === "EMPLOYEE") return;
   const tbody = document.getElementById("availableAssetsTableBody");
   const countBadge = document.getElementById("availableAssetsCountBadge");
   const assetType = document.getElementById("availableAssetTypeFilter")?.value || "";
@@ -1364,7 +1388,7 @@ async function loadUsers() {
     const users = (res && res.data) ? res.data : [];
 
     if (!users.length) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center">No users found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center">No users found.</td></tr>`;
       return;
     }
 
@@ -1377,6 +1401,12 @@ async function loadUsers() {
         : `<span class="badge badge-retired">Inactive</span>`;
       const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : "—";
 
+      const actionsHtml = currentUser?.role === "ADMIN"
+        ? (user.user_id === currentUser.user_id 
+            ? `<span class="text-muted" style="font-size: 0.8rem;">(You)</span>` 
+            : `<button type="button" class="btn btn-xs btn-outline-danger" onclick="deleteUser('${escapeHtml(user.user_id)}')">Delete</button>`)
+        : `<span class="text-muted">—</span>`;
+
       return `
         <tr>
           <td><span class="font-mono text-primary">${escapeHtml(user.user_id)}</span></td>
@@ -1386,14 +1416,29 @@ async function loadUsers() {
           <td>${escapeHtml(user.department || "—")}</td>
           <td>${statusBadge}</td>
           <td>${createdDate}</td>
+          <td>${actionsHtml}</td>
         </tr>
       `;
     }).join("");
   } catch (err) {
     console.error("Failed to load users:", err);
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Failed to load users. ${escapeHtml(err.message || "")}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Failed to load users. ${escapeHtml(err.message || "")}</td></tr>`;
   }
 }
+
+window.deleteUser = async function(userId) {
+  if (!confirm(`Are you sure you want to permanently delete user "${userId}"? Any assigned equipment will be returned to available inventory.`)) {
+    return;
+  }
+  try {
+    const res = await apiRequest(`/users/${encodeURIComponent(userId)}`, "DELETE");
+    alert(res.message || `User "${userId}" deleted successfully.`);
+    loadUsers();
+    loadAssets();
+  } catch (err) {
+    alert("Could not delete user: " + err.message);
+  }
+};
 
 async function handleCreateUser(e) {
   e.preventDefault();

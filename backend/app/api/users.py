@@ -12,7 +12,13 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.database.repositories import UserRepository, ActivityLogRepository
 from app.models.enums import UserRole
-from app.models.orm import UserModel
+from app.models.orm import (
+    UserModel,
+    AssetModel,
+    TicketModel,
+    AssetAssignmentModel,
+    ActivityLogModel,
+)
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.schemas.common import APIResponse
 from app.api.auth import get_current_user, require_roles
@@ -122,19 +128,45 @@ def delete_user(
     current_user: UserModel = Depends(require_roles(UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ) -> APIResponse[None]:
-    """Admin-only: Soft deactivate user account."""
+    """Admin-only: Permanently delete user account and cleanly detach assigned equipment/tickets."""
+    if user_id == current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own active administrator account.",
+        )
+
     user_repo = UserRepository(db)
     user = user_repo.get_by_user_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User '{user_id}' not found.")
 
-    user.is_active = False
+    # 1. Unassign any hardware assets currently assigned to this user
+    db.query(AssetModel).filter(AssetModel.assigned_to == user_id).update(
+        {"assigned_to": None, "status": "AVAILABLE"}
+    )
+
+    # 2. Unassign any tickets currently assigned to this user
+    db.query(TicketModel).filter(TicketModel.assigned_to == user_id).update(
+        {"assigned_to": None, "status": "OPEN"}
+    )
+
+    # 3. Clean up historical assignment records and activity logs
+    db.query(AssetAssignmentModel).filter(AssetAssignmentModel.user_id == user_id).delete()
+    db.query(ActivityLogModel).filter(ActivityLogModel.user_id == user_id).delete()
+
+    # 4. Reassign tickets created by this user to current admin so ticket history remains valid
+    db.query(TicketModel).filter(TicketModel.created_by == user_id).update(
+        {"created_by": current_user.user_id}
+    )
+
+    # 5. Delete user record
+    db.delete(user)
     db.commit()
 
     ActivityLogRepository(db).log(
         user_id=current_user.user_id,
-        action="ADMIN_DEACTIVATE_USER",
+        action="ADMIN_DELETE_USER",
         entity_type="User",
-        entity_id=user.user_id,
+        entity_id=user_id,
     )
-    return APIResponse(message=f"User '{user_id}' deactivated successfully.")
+    return APIResponse(message=f"User '{user_id}' deleted successfully.")

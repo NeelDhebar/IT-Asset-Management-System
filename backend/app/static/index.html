@@ -57,7 +57,8 @@
 
   <!-- Login Modal / Overlay (shown when not authenticated) -->
   <div id="loginModal" class="modal-overlay hidden">
-    <div class="modal-content glass-card login-card">
+    <div class="modal-content glass-card login-card" style="position: relative;">
+      <button type="button" class="modal-close" onclick="closeModal('loginModal')" style="position: absolute; top: 16px; right: 16px; font-size: 26px; cursor: pointer; background: none; border: none; color: var(--text-secondary); line-height: 1;" title="Close Login">&times;</button>
       <div class="login-header">
         <div class="brand-icon lg">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -536,11 +537,12 @@
               <th>Department</th>
               <th>Status</th>
               <th>Created</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="usersTableBody">
             <tr>
-              <td colspan="7" class="text-center loading-cell">Loading users...</td>
+              <td colspan="8" class="text-center loading-cell">Loading users...</td>
             </tr>
           </tbody>
         </table>
@@ -635,8 +637,8 @@
         <input type="hidden" id="resolveTargetTicketId">
         <div class="form-group">
           <label for="resolveExplanation">Resolution Explanation *</label>
-          <textarea id="resolveExplanation" class="form-textarea" rows="3" required
-            placeholder="Explain technical resolution applied..."></textarea>
+          <textarea id="resolveExplanation" class="form-textarea" rows="3" required minlength="5"
+            placeholder="Explain technical resolution applied (minimum 5 characters)..."></textarea>
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" onclick="closeModal('resolveTicketModal')">Cancel</button>
@@ -920,7 +922,7 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=7.0"></script>
+  <script src="/static/js/app.js?v=8.0"></script>
 </body>
 
 </html>

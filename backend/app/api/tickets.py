@@ -212,9 +212,6 @@ async def resolve_ticket(
     if not ticket:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Ticket '{ticket_id}' not found.")
 
-    if current_user.role == UserRole.SUPPORT.value and ticket.assigned_to != current_user.user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot resolve tickets assigned to another support agent.")
-
     updated = service.resolve_ticket(
         ticket_id=ticket_id,
         resolution=payload.resolution,

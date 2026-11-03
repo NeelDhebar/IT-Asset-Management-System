@@ -57,7 +57,7 @@ class TicketStatus(str, Enum):
 # Valid Ticket state transitions
 ALLOWED_TICKET_TRANSITIONS = {
     TicketStatus.OPEN: [TicketStatus.ASSIGNED, TicketStatus.CLOSED],
-    TicketStatus.ASSIGNED: [TicketStatus.IN_PROGRESS, TicketStatus.OPEN],
+    TicketStatus.ASSIGNED: [TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED, TicketStatus.OPEN],
     TicketStatus.IN_PROGRESS: [TicketStatus.RESOLVED, TicketStatus.ASSIGNED],
     TicketStatus.RESOLVED: [TicketStatus.CLOSED, TicketStatus.IN_PROGRESS],
     TicketStatus.CLOSED: [],  # Terminal state

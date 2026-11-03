@@ -35,11 +35,12 @@ def list_assets(
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> APIResponse[List[Dict[str, Any]]]:
-    """List assets. Employees see their own assigned assets unless viewing available assets."""
+    """List assets. Employees only see their own assigned assets."""
     service = AssetService(db)
     if current_user.role == UserRole.EMPLOYEE.value:
-        if status_filter != "AVAILABLE":
-            assigned_to = current_user.user_id
+        # Employees cannot view available hardware or other employees' hardware
+        assigned_to = current_user.user_id
+        status_filter = None
 
     assets = service.list_assets(status=status_filter, asset_type=asset_type, assigned_to=assigned_to)
     return APIResponse(data=assets)
@@ -55,10 +56,10 @@ def get_asset(
     service = AssetService(db)
     asset_data = service.get_asset(asset_id)
 
-    # If employee, ensure they are assigned this asset or it is available inventory
+    # If employee, ensure they are assigned this asset
     if current_user.role == UserRole.EMPLOYEE.value:
-        if asset_data.get("assigned_to") != current_user.user_id and asset_data.get("status") != "AVAILABLE":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Cannot view assets assigned to other employees.")
+        if asset_data.get("assigned_to") != current_user.user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Cannot view unassigned or other employees' assets.")
 
     return APIResponse(data=asset_data)
 
